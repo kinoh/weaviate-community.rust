@@ -1,7 +1,7 @@
 use reqwest::Url;
-use std::error::Error;
 use std::sync::Arc;
 
+use crate::collections::error::Result;
 use crate::collections::meta::Metadata;
 
 /// All meta related endpoints and functionality described in
@@ -17,7 +17,7 @@ pub struct Meta {
 impl Meta {
     /// Create a new instance of the Meta endpoint struct. Should only be done by the parent
     /// client.
-    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self, Box<dyn Error>> {
+    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self> {
         let endpoint = url.join("/v1/meta/")?;
         Ok(Meta { endpoint, client })
     }
@@ -44,7 +44,7 @@ impl Meta {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn get_meta(&self) -> Result<Metadata, Box<dyn Error>> {
+    pub async fn get_meta(&self) -> Result<Metadata> {
         let res = self.client.get(self.endpoint.clone()).send().await?;
         let res: Metadata = res.json().await?;
         Ok(res)

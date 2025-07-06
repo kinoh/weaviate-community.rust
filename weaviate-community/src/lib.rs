@@ -24,8 +24,8 @@ pub use self::oidc::Oidc;
 pub use self::query::Query;
 pub use self::schema::Schema;
 use collections::auth::{ApiKey, AuthApiKey};
+use crate::collections::error::Result;
 
-use std::error::Error;
 use std::sync::Arc;
 
 use reqwest::header::{HeaderMap, AUTHORIZATION};
@@ -92,7 +92,7 @@ impl WeaviateClient {
         url: &str,
         auth_client_secret: Option<AuthApiKey>,
         api_keys: Option<Vec<ApiKey>>,
-    ) -> Result<Self, Box<dyn Error>> {
+    ) -> Result<Self> {
         let base = Url::parse(url)?;
         let mut client_builder = reqwest::Client::builder();
 
@@ -172,7 +172,7 @@ impl WeaviateClient {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn is_live(&self) -> Result<bool, Box<dyn Error>> {
+    pub async fn is_live(&self) -> Result<bool> {
         let endpoint = self.base_url.join("/v1/.well-known/live")?;
         let resp = self.client.get(endpoint).send().await?;
         match resp.status() {
@@ -200,7 +200,7 @@ impl WeaviateClient {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn is_ready(&self) -> Result<bool, Box<dyn Error>> {
+    pub async fn is_ready(&self) -> Result<bool> {
         let endpoint = self.base_url.join("/v1/.well-known/ready")?;
         let resp = self.client.get(endpoint).send().await?;
         match resp.status() {
@@ -321,7 +321,7 @@ impl WeaviateClientBuilder {
     ///
     /// let client = WeaviateClientBuilder::new("http://localhost:8080").build();
     /// ```
-    pub fn build(self) -> Result<WeaviateClient, Box<dyn Error>> {
+    pub fn build(self) -> Result<WeaviateClient> {
         let client = WeaviateClient::new(&self.base_url, self.auth_secret, Some(self.api_keys))?;
         Ok(client)
     }
