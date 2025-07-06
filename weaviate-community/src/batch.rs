@@ -1,10 +1,9 @@
 use reqwest::Url;
-use std::error::Error;
 use std::sync::Arc;
 
 use crate::collections::{
     batch::{BatchAddObjects, BatchAddReferencesResponse, BatchDeleteRequest, BatchDeleteResponse},
-    error::BatchError,
+    error::{Result, WeaviateError},
     objects::{ConsistencyLevel, MultiObjects, References},
 };
 
@@ -17,7 +16,7 @@ pub struct Batch {
 }
 
 impl Batch {
-    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self, Box<dyn Error>> {
+    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self> {
         let endpoint = url.join("/v1/batch/")?;
         Ok(Batch { endpoint, client })
     }
@@ -68,7 +67,7 @@ impl Batch {
         objects: MultiObjects,
         consistency_level: Option<ConsistencyLevel>,
         tenant: Option<&str>,
-    ) -> Result<BatchAddObjects, Box<dyn Error>> {
+    ) -> Result<BatchAddObjects> {
         let mut endpoint = self.endpoint.join("objects")?;
         if let Some(x) = consistency_level {
             endpoint
@@ -87,10 +86,10 @@ impl Batch {
                 let res: BatchAddObjects = res.json().await?;
                 Ok(res)
             }
-            _ => Err(Box::new(BatchError(format!(
+            _ => Err(WeaviateError::Batch(format!(
                 "status code {} received.",
                 res.status()
-            )))),
+            ))),
         }
     }
 
@@ -135,7 +134,7 @@ impl Batch {
         request_body: BatchDeleteRequest,
         consistency_level: Option<ConsistencyLevel>,
         tenant: Option<&str>,
-    ) -> Result<BatchDeleteResponse, Box<dyn Error>> {
+    ) -> Result<BatchDeleteResponse> {
         let mut endpoint = self.endpoint.join("objects")?;
         if let Some(x) = consistency_level {
             endpoint
@@ -154,10 +153,10 @@ impl Batch {
                 let res: BatchDeleteResponse = res.json().await?;
                 Ok(res)
             }
-            _ => Err(Box::new(BatchError(format!(
+            _ => Err(WeaviateError::Batch(format!(
                 "status code {} received.",
                 res.status()
-            )))),
+            ))),
         }
     }
 
@@ -215,7 +214,7 @@ impl Batch {
         references: References,
         consistency_level: Option<ConsistencyLevel>,
         tenant: Option<&str>,
-    ) -> Result<BatchAddReferencesResponse, Box<dyn Error>> {
+    ) -> Result<BatchAddReferencesResponse> {
         let mut converted: Vec<serde_json::Value> = Vec::new();
         for reference in references.0 {
             let new_ref = serde_json::json!({
@@ -252,10 +251,10 @@ impl Batch {
                 let res: BatchAddReferencesResponse = res.json().await?;
                 Ok(res)
             }
-            _ => Err(Box::new(BatchError(format!(
+            _ => Err(WeaviateError::Batch(format!(
                 "status code {} received.",
                 res.status()
-            )))),
+            ))),
         }
     }
 }

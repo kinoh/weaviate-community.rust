@@ -1,9 +1,8 @@
 /// https://weaviate.io/developers/weaviate/api/rest/well-known
 use reqwest::Url;
-use std::error::Error;
 use std::sync::Arc;
 
-use crate::collections::error::NotConfiguredError;
+use crate::collections::error::{Result, WeaviateError};
 use crate::collections::oidc::OidcResponse;
 
 #[derive(Debug)]
@@ -13,7 +12,7 @@ pub struct Oidc {
 }
 
 impl Oidc {
-    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self, Box<dyn Error>> {
+    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self> {
         let endpoint = url.join("/v1/.well-known")?;
         Ok(Oidc { endpoint, client })
     }
@@ -30,7 +29,7 @@ impl Oidc {
     /// GET /v1/.well-known/openid-configuration
     /// ```
     /// ```
-    pub async fn get_open_id_configuration(&self) -> Result<OidcResponse, Box<dyn Error>> {
+    pub async fn get_open_id_configuration(&self) -> Result<OidcResponse> {
         let endpoint = self.endpoint.join("/openid-configuration")?;
         let resp = self.client.get(endpoint).send().await?;
         match resp.status() {
@@ -38,9 +37,9 @@ impl Oidc {
                 let parsed: OidcResponse = resp.json::<OidcResponse>().await?;
                 Ok(parsed)
             }
-            _ => Err(Box::new(NotConfiguredError(
+            _ => Err(WeaviateError::NotConfigured(
                 "OIDC is not configured or is unavailable".into(),
-            ))),
+            )),
         }
     }
 }

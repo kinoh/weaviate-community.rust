@@ -1,12 +1,11 @@
 use reqwest::Url;
-use std::error::Error;
 use std::sync::Arc;
 
 use crate::collections::backups::{
     BackupBackends, BackupCreateRequest, BackupResponse, BackupRestoreRequest, BackupStatus,
     BackupStatusResponse,
 };
-use crate::collections::error::BackupError;
+use crate::collections::error::{Result, WeaviateError};
 
 /// All backup related endpoints and functionality described in
 /// [Weaviate meta API documentation](https://weaviate.io/developers/weaviate/api/rest/backups)
@@ -17,7 +16,7 @@ pub struct Backups {
 }
 
 impl Backups {
-    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self, Box<dyn Error>> {
+    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self> {
         let endpoint = url.join("/v1/backups/")?;
         Ok(Backups { endpoint, client })
     }
@@ -52,7 +51,7 @@ impl Backups {
         backend: &BackupBackends,
         backup_request: &BackupCreateRequest,
         wait_for_completion: bool,
-    ) -> Result<BackupResponse, Box<dyn Error>> {
+    ) -> Result<BackupResponse> {
         let endpoint = self.endpoint.join(backend.value())?;
         let payload = serde_json::to_value(&backup_request)?;
         let res = self.client.post(endpoint).json(&payload).send().await?;
@@ -68,10 +67,10 @@ impl Backups {
                 }
                 Ok(res)
             }
-            _ => Err(Box::new(BackupError(format!(
+            _ => Err(WeaviateError::Backup(format!(
                 "status code {} received.",
                 res.status()
-            )))),
+            ))),
         }
     }
 
@@ -99,7 +98,7 @@ impl Backups {
         backend: &BackupBackends,
         backup_id: &str,
         restore: bool,
-    ) -> Result<BackupStatusResponse, Box<dyn Error>> {
+    ) -> Result<BackupStatusResponse> {
         let mut endpoint: String = backend.value().into();
         endpoint.push_str("/");
         endpoint.push_str(&backup_id.to_string());
@@ -113,10 +112,10 @@ impl Backups {
                 let res: BackupStatusResponse = res.json().await?;
                 Ok(res)
             }
-            _ => Err(Box::new(BackupError(format!(
+            _ => Err(WeaviateError::Backup(format!(
                 "status code {} received.",
                 res.status()
-            )))),
+            ))),
         }
     }
 
@@ -151,7 +150,7 @@ impl Backups {
         backup_id: &str,
         backup_request: &BackupRestoreRequest,
         wait_for_completion: bool,
-    ) -> Result<BackupResponse, Box<dyn Error>> {
+    ) -> Result<BackupResponse> {
         let mut endpoint: String = backend.value().into();
         endpoint.push_str("/");
         endpoint.push_str(&backup_id.to_string());
@@ -169,10 +168,10 @@ impl Backups {
                 }
                 Ok(res)
             }
-            _ => Err(Box::new(BackupError(format!(
+            _ => Err(WeaviateError::Backup(format!(
                 "status code {} received.",
                 res.status()
-            )))),
+            ))),
         }
     }
 
@@ -182,14 +181,14 @@ impl Backups {
         backend: &BackupBackends,
         backup_id: &str,
         restore: bool,
-    ) -> Result<BackupStatus, Box<dyn Error>> {
+    ) -> Result<BackupStatus> {
         loop {
             let res = self.get_backup_status(backend, backup_id, restore).await;
             let status = res?;
             if status.status == BackupStatus::SUCCESS {
                 return Ok(BackupStatus::SUCCESS);
             } else if status.status == BackupStatus::FAILED {
-                return Err(Box::new(BackupError(format!("backup status FAILED",))));
+                return Err(WeaviateError::Backup(format!("backup status FAILED",)));
             }
         }
     }

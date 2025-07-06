@@ -1,9 +1,9 @@
-use crate::collections::error::QueryError;
+use crate::collections::error::{Result, WeaviateError};
 use crate::collections::objects::{
     ConsistencyLevel, MultiObjects, Object, ObjectListParameters, Reference,
 };
 use reqwest::Url;
-use std::{error::Error, sync::Arc};
+use std::sync::Arc;
 use uuid::Uuid;
 
 /// All objects endpoints and functionality described in
@@ -18,7 +18,7 @@ impl Objects {
     /// Create a new Objects endpoint orchestrator for the client.
     ///
     /// Should not be done manually.
-    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self, Box<dyn Error>> {
+    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self> {
         let endpoint = url.join("/v1/objects/")?;
         Ok(Objects { endpoint, client })
     }
@@ -46,7 +46,7 @@ impl Objects {
     pub async fn list(
         &self,
         parameters: ObjectListParameters,
-    ) -> Result<MultiObjects, Box<dyn Error>> {
+    ) -> Result<MultiObjects> {
         let mut endpoint = self.endpoint.clone();
 
         // Add the query params when they are present
@@ -64,28 +64,28 @@ impl Objects {
                 .append_pair("offset", &o.to_string());
             // Raise an err if after is some
             if parameters.after.is_some() {
-                return Err(Box::new(QueryError(
+                return Err(WeaviateError::Query(
                     "'after' must be None when 'offset' is Some".into(),
-                )));
+                ));
             }
         }
         if let Some(a) = &parameters.after {
             endpoint.query_pairs_mut().append_pair("after", &a);
             if parameters.after.is_none() {
-                return Err(Box::new(QueryError(
+                return Err(WeaviateError::Query(
                     "'class' must be Some when 'after' is Some".into(),
-                )));
+                ));
             }
             // raise an error if offset or sort are some
             if parameters.offset.is_some() {
-                return Err(Box::new(QueryError(
+                return Err(WeaviateError::Query(
                     "'offset' must be None when 'after' is Some".into(),
-                )));
+                ));
             }
             if parameters.sort.is_some() {
-                return Err(Box::new(QueryError(
+                return Err(WeaviateError::Query(
                     "'sort' must be None when 'after' is Some".into(),
-                )));
+                ));
             }
         }
         if let Some(i) = parameters.include {
@@ -106,7 +106,7 @@ impl Objects {
                 let res: MultiObjects = res.json().await?;
                 Ok(res)
             }
-            _ => Err(self.get_err_msg("list objects", res).await),
+            _ => Err(WeaviateError::Query(format!("list objects failed"))),
         }
     }
 
@@ -142,7 +142,7 @@ impl Objects {
         &self,
         new_object: &Object,
         consistency_level: Option<ConsistencyLevel>,
-    ) -> Result<Object, Box<dyn Error>> {
+    ) -> Result<Object> {
         let mut endpoint = self.endpoint.clone();
         if let Some(x) = consistency_level {
             endpoint
@@ -157,7 +157,7 @@ impl Objects {
                 let res: Object = res.json().await?;
                 Ok(res)
             }
-            _ => Err(self.get_err_msg("create object", res).await)
+            _ => Err(WeaviateError::Query(format!("create object failed")))
         }
     }
 
@@ -192,7 +192,7 @@ impl Objects {
         include: Option<&str>,
         consistency_level: Option<ConsistencyLevel>,
         tenant_key: Option<&str>,
-    ) -> Result<Object, Box<dyn Error>> {
+    ) -> Result<Object> {
         let mut endpoint: String = class_name.into();
         endpoint.push_str("/");
         endpoint.push_str(&id.to_string());
@@ -217,7 +217,7 @@ impl Objects {
                 let res: Object = res.json().await?;
                 Ok(res)
             }
-            _ => Err(self.get_err_msg("get object", res).await),
+            _ => Err(WeaviateError::Query(format!("get object failed"))),
         }
     }
 
@@ -252,7 +252,7 @@ impl Objects {
         id: &Uuid,
         consistency_level: Option<ConsistencyLevel>,
         tenant_name: Option<&str>,
-    ) -> Result<bool, Box<dyn Error>> {
+    ) -> Result<bool> {
         let mut endpoint: String = class_name.into();
         endpoint.push_str("/");
         endpoint.push_str(&id.to_string());
@@ -270,7 +270,7 @@ impl Objects {
         let res = self.client.head(endpoint).send().await?;
         match res.status() {
             reqwest::StatusCode::NO_CONTENT => Ok(true),
-            _ => Err(self.get_err_msg("object exists", res).await),
+            _ => Err(WeaviateError::Query(format!("object exists failed"))),
         }
     }
 
@@ -311,7 +311,7 @@ impl Objects {
         class_name: &str,
         id: &Uuid,
         consistency_level: Option<ConsistencyLevel>,
-    ) -> Result<bool, Box<dyn Error>> {
+    ) -> Result<bool> {
         let mut endpoint: String = class_name.into();
         endpoint.push_str("/");
         endpoint.push_str(&id.to_string());
@@ -324,7 +324,7 @@ impl Objects {
         let res = self.client.patch(endpoint).json(&properties).send().await?;
         match res.status() {
             reqwest::StatusCode::NO_CONTENT => Ok(true),
-            _ => Err(self.get_err_msg("update object properties", res).await),
+            _ => Err(WeaviateError::Query(format!("update object properties failed"))),
         }
     }
 
@@ -367,7 +367,7 @@ impl Objects {
         class_name: &str,
         id: &Uuid,
         consistency_level: Option<ConsistencyLevel>,
-    ) -> Result<Object, Box<dyn Error>> {
+    ) -> Result<Object> {
         let payload = serde_json::json!({
             "class": class_name,
             "id": id,
@@ -389,7 +389,7 @@ impl Objects {
                 let res: Object = res.json().await?;
                 Ok(res)
             }
-            _ => Err(self.get_err_msg("replace object properties", res).await),
+            _ => Err(WeaviateError::Query(format!("replace object properties failed"))),
         }
     }
 
@@ -423,7 +423,7 @@ impl Objects {
         id: &Uuid,
         consistency_level: Option<ConsistencyLevel>,
         tenant_name: Option<&str>,
-    ) -> Result<bool, Box<dyn Error>> {
+    ) -> Result<bool> {
         let mut endpoint: String = class_name.into();
         endpoint.push_str("/");
         endpoint.push_str(&id.to_string());
@@ -441,7 +441,7 @@ impl Objects {
         let res = self.client.delete(endpoint).send().await?;
         match res.status() {
             reqwest::StatusCode::NO_CONTENT => Ok(true),
-            _ => Err(self.get_err_msg("delete object", res).await),
+            _ => Err(WeaviateError::Query(format!("delete object failed"))),
         }
     }
 
@@ -473,7 +473,7 @@ impl Objects {
         class_name: &str,
         properties: &serde_json::Value,
         id: &Uuid,
-    ) -> Result<bool, Box<dyn Error>> {
+    ) -> Result<bool> {
         let payload = serde_json::json!({
             "class": class_name,
             "id": id.to_string(),
@@ -484,7 +484,7 @@ impl Objects {
         let res = self.client.post(endpoint).json(&payload).send().await?;
         match res.status() {
             reqwest::StatusCode::OK => Ok(true),
-            _ => Err(self.get_err_msg("validate object", res).await),
+            _ => Err(WeaviateError::Query(format!("validate object failed"))),
         }
     }
 
@@ -527,7 +527,7 @@ impl Objects {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn reference_add(&self, reference: Reference) -> Result<bool, Box<dyn Error>> {
+    pub async fn reference_add(&self, reference: Reference) -> Result<bool> {
         let payload = serde_json::json!({
             "beacon": format!("weaviate://localhost/{}/{}", reference.to_class_name, reference.to_uuid),
         });
@@ -550,7 +550,7 @@ impl Objects {
         let res = self.client.post(endpoint).json(&payload).send().await?;
         match res.status() {
             reqwest::StatusCode::OK => Ok(true),
-            _ => Err(self.get_err_msg("add object reference", res).await),
+            _ => Err(WeaviateError::Query(format!("add object reference failed"))),
         }
     }
 
@@ -586,7 +586,7 @@ impl Objects {
     ///         vec!["JeopardyCategory"],
     ///         vec![&uuid2],
     ///         None,
-    ///         None
+    ///         None,
     ///     ).await;
     ///
     ///     Ok(())
@@ -601,11 +601,11 @@ impl Objects {
         to_uuids: Vec<&Uuid>,
         consistency_level: Option<ConsistencyLevel>,
         tenant_name: Option<&str>,
-    ) -> Result<Object, Box<dyn Error>> {
+    ) -> Result<Object> {
         if to_class_names.len() != to_uuids.len() {
-            return Err(Box::new(QueryError(
+            return Err(WeaviateError::Query(
                 "to_class_names.len() must equal to_uuids.len().".into(),
-            )));
+            ));
         }
 
         // Match the class names to the id's in the beacon format
@@ -639,9 +639,10 @@ impl Objects {
                 let res: Object = res.json().await?;
                 Ok(res)
             }
-            _ => Err(self.get_err_msg("update object reference", res).await),
+            _ => Err(WeaviateError::Query(format!("update object reference failed"))),
         }
     }
+    
 
     /// Delete the single reference that is given in the body from the list of references that the
     /// specified property of a given object has, if it exists in the list. Will return true both
@@ -681,7 +682,7 @@ impl Objects {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn reference_delete(&self, reference: Reference) -> Result<bool, Box<dyn Error>> {
+    pub async fn reference_delete(&self, reference: Reference) -> Result<bool> {
         let payload = serde_json::json!({
             "beacon": format!("weaviate://localhost/{}/{}", reference.to_class_name, reference.to_uuid),
         });
@@ -704,33 +705,11 @@ impl Objects {
         let res = self.client.delete(endpoint).json(&payload).send().await?;
         match res.status() {
             reqwest::StatusCode::NO_CONTENT => Ok(true),
-            _ => Err(self.get_err_msg("delete object reference", res).await),
+            _ => Err(WeaviateError::Query(format!("delete object reference failed"))),
         }
     }
 
-    /// Get the error message for the endpoint
-    ///
-    /// Made to reduce the boilerplate error message building
-    async fn get_err_msg(&self, endpoint: &str, res: reqwest::Response) -> Box<QueryError> {
-        let status_code = res.status();
-        let msg: Result<serde_json::Value, reqwest::Error> = res.json().await;
-        let r_str: String;
-        if let Ok(json) = msg {
-            r_str = format!(
-                "Status code `{}` received when calling {} endpoint. Response: {}",
-                status_code,
-                endpoint,
-                json,
-            );
-        } else {
-            r_str = format!(
-                "Status code `{}` received when calling {} endpoint.",
-                status_code,
-                endpoint
-            );
-        }
-        Box::new(QueryError(r_str))
-    }
+    
 }
 
 #[cfg(test)]

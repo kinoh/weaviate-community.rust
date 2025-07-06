@@ -1,9 +1,8 @@
-use crate::collections::error::SchemaError;
+use crate::collections::error::{Result, WeaviateError};
 use crate::collections::schema::{
     Class, Classes, Property, Shard, ShardStatus, Shards, Tenant, Tenants,
 };
 use reqwest::Url;
-use std::error::Error;
 use std::sync::Arc;
 
 /// All schema related endpoints and functionality described in
@@ -17,7 +16,7 @@ pub struct Schema {
 impl Schema {
     /// Create a new Schema object. The schema object is intended to like inside the WeaviateClient
     /// and be called through the WeaviateClient.
-    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self, Box<dyn Error>> {
+    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self> {
         let endpoint = url.join("/v1/schema/")?;
         Ok(Schema { endpoint, client })
     }
@@ -36,7 +35,7 @@ impl Schema {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn get_class(&self, class_name: &str) -> Result<Class, Box<dyn Error>> {
+    pub async fn get_class(&self, class_name: &str) -> Result<Class> {
         let endpoint = self.endpoint.join(class_name)?;
         let res = self.client.get(endpoint).send().await?;
 
@@ -45,7 +44,7 @@ impl Schema {
                 let res: Class = res.json().await?;
                 Ok(res)
             },
-            _ => Err(self.get_err_msg("get class", res).await),
+            _ => Err(WeaviateError::Schema(format!("get class failed"))),
         }
     }
 
@@ -63,14 +62,14 @@ impl Schema {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn get(&self) -> Result<Classes, Box<dyn Error>> {
+    pub async fn get(&self) -> Result<Classes> {
         let res = self.client.get(self.endpoint.clone()).send().await?;
         match res.status() {
             reqwest::StatusCode::OK => {
                 let res: Classes = res.json().await?;
                 Ok(res)
             }
-            _ => Err(self.get_err_msg("get schema", res).await),
+            _ => Err(WeaviateError::Schema(format!("get schema failed"))),
         }
     }
 
@@ -94,8 +93,8 @@ impl Schema {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn create_class(&self, class: &Class) -> Result<Class, Box<dyn Error>> {
-        let payload = serde_json::to_value(&class).unwrap();
+    pub async fn create_class(&self, class: &Class) -> Result<Class> {
+        let payload = serde_json::to_value(&class)?;
         let res = self
             .client
             .post(self.endpoint.clone())
@@ -107,7 +106,7 @@ impl Schema {
                 let res: Class = res.json().await?;
                 Ok(res)
             }
-            _ => Err(self.get_err_msg("create class", res).await),
+            _ => Err(WeaviateError::Schema(format!("create class failed"))),
         }
     }
 
@@ -127,12 +126,12 @@ impl Schema {
     /// }
     /// ```
     ///
-    pub async fn delete(&self, class_name: &str) -> Result<bool, Box<dyn Error>> {
+    pub async fn delete(&self, class_name: &str) -> Result<bool> {
         let endpoint = self.endpoint.join(class_name)?;
         let res = self.client.delete(endpoint).send().await?;
         match res.status() {
             reqwest::StatusCode::OK => Ok(true),
-            _ => Err(self.get_err_msg("delete class", res).await),
+            _ => Err(WeaviateError::Schema(format!("delete class failed"))),
         }
     }
 
@@ -149,7 +148,7 @@ impl Schema {
     /// some fields may be immutable.
     ///
     /// You should attach a body to this PUT request with the entire new configuration of the class
-    pub async fn update(&self, class: &Class) -> Result<Class, Box<dyn Error>> {
+    pub async fn update(&self, class: &Class) -> Result<Class> {
         let endpoint = self.endpoint.join(&class.class)?;
         let payload = serde_json::to_value(&class)?;
         let res = self.client.put(endpoint).json(&payload).send().await?;
@@ -158,7 +157,7 @@ impl Schema {
                 let res: Class = res.json().await?;
                 Ok(res)
             }
-            _ => Err(self.get_err_msg("update class", res).await),
+            _ => Err(WeaviateError::Schema(format!("update class failed"))),
         }
     }
 
@@ -169,7 +168,7 @@ impl Schema {
         &self,
         class_name: &str,
         property: &Property,
-    ) -> Result<Property, Box<dyn Error>> {
+    ) -> Result<Property> {
         let mut endpoint = class_name.to_string();
         endpoint.push_str("/properties");
         let endpoint = self.endpoint.join(&endpoint)?;
@@ -180,14 +179,14 @@ impl Schema {
                 let res: Property = res.json().await?;
                 Ok(res)
             }
-            _ => Err(self.get_err_msg("add property", res).await),
+            _ => Err(WeaviateError::Schema(format!("add property failed"))),
         }
     }
 
     ///
     /// View all of the shards for a particular class.
     ///
-    pub async fn get_shards(&self, class_name: &str) -> Result<Shards, Box<dyn Error>> {
+    pub async fn get_shards(&self, class_name: &str) -> Result<Shards> {
         let mut endpoint = class_name.to_string();
         endpoint.push_str("/shards");
         let endpoint = self.endpoint.join(&endpoint)?;
@@ -198,7 +197,7 @@ impl Schema {
                 let shards = Shards { shards };
                 Ok(shards)
             }
-            _ => Err(self.get_err_msg("get shards", res).await),
+            _ => Err(WeaviateError::Schema(format!("get shards failed"))),
         }
     }
 
@@ -210,7 +209,7 @@ impl Schema {
         class_name: &str,
         shard_name: &str,
         status: ShardStatus,
-    ) -> Result<Shard, Box<dyn Error>> {
+    ) -> Result<Shard> {
         let mut endpoint = class_name.to_string();
         endpoint.push_str("/shards/");
         endpoint.push_str(shard_name);
@@ -222,14 +221,14 @@ impl Schema {
                 name: shard_name.into(),
                 status,
             }),
-            _ => Err(self.get_err_msg("update class shard", res).await),
+            _ => Err(WeaviateError::Schema(format!("update class shard failed"))),
         }
     }
 
     ///
     /// List tenants
     ///
-    pub async fn list_tenants(&self, class_name: &str) -> Result<Tenants, Box<dyn Error>> {
+    pub async fn list_tenants(&self, class_name: &str) -> Result<Tenants> {
         let mut endpoint = class_name.to_string();
         endpoint.push_str("/tenants");
         let endpoint = self.endpoint.join(&endpoint)?;
@@ -240,7 +239,7 @@ impl Schema {
                 let tenants = Tenants { tenants };
                 Ok(tenants)
             }
-            _ => Err(self.get_err_msg("list tenants", res).await),
+            _ => Err(WeaviateError::Schema(format!("list tenants failed"))),
         }
     }
 
@@ -251,7 +250,7 @@ impl Schema {
         &self,
         class_name: &str,
         tenants: &Tenants,
-    ) -> Result<Tenants, Box<dyn Error>> {
+    ) -> Result<Tenants> {
         let mut endpoint = class_name.to_string();
         endpoint.push_str("/tenants");
         let endpoint = self.endpoint.join(&endpoint)?;
@@ -263,7 +262,7 @@ impl Schema {
                 let tenants = Tenants { tenants };
                 Ok(tenants)
             }
-            _ => Err(self.get_err_msg("add tenants", res).await),
+            _ => Err(WeaviateError::Schema(format!("add tenants failed"))),
         }
     }
 
@@ -274,7 +273,7 @@ impl Schema {
         &self,
         class_name: &str,
         tenants: &Vec<&str>,
-    ) -> Result<bool, Box<dyn Error>> {
+    ) -> Result<bool> {
         let mut endpoint = class_name.to_string();
         endpoint.push_str("/tenants");
         let endpoint = self.endpoint.join(&endpoint)?;
@@ -282,7 +281,7 @@ impl Schema {
         let res = self.client.delete(endpoint).json(&payload).send().await?;
         match res.status() {
             reqwest::StatusCode::OK => Ok(true),
-            _ => Err(self.get_err_msg("remove tenants", res).await),
+            _ => Err(WeaviateError::Schema(format!("remove tenants failed"))),
         }
     }
 
@@ -297,7 +296,7 @@ impl Schema {
         &self,
         class_name: &str,
         tenants: &Tenants,
-    ) -> Result<Tenants, Box<dyn Error>> {
+    ) -> Result<Tenants> {
         let mut endpoint = class_name.to_string();
         endpoint.push_str("/tenants");
         let endpoint = self.endpoint.join(&endpoint)?;
@@ -309,33 +308,17 @@ impl Schema {
                 let tenants = Tenants { tenants };
                 Ok(tenants)
             }
-            _ => Err(self.get_err_msg("update tenants", res).await),
+            status => {
+                let msg = match res.json::<serde_json::Value>().await {
+                    Ok(json) => format!("status {status}, response: {json}"),
+                    Err(_) => format!("status {status}, failed to parse response body"),
+                };
+                Err(WeaviateError::Schema(msg))
+            }
         }
     }
 
-    /// Get the error message for the endpoint
-    ///
-    /// Made to reduce the boilerplate error message building
-    async fn get_err_msg(&self, endpoint: &str, res: reqwest::Response) -> Box<SchemaError> {
-        let status_code = res.status();
-        let msg: Result<serde_json::Value, reqwest::Error> = res.json().await;
-        let r_str: String;
-        if let Ok(json) = msg {
-            r_str = format!(
-                "Status code `{}` received when calling {} endpoint. Response: {}",
-                status_code,
-                endpoint,
-                json,
-            );
-        } else {
-            r_str = format!(
-                "Status code `{}` received when calling {} endpoint.",
-                status_code,
-                endpoint
-            );
-        }
-        Box::new(SchemaError(r_str))
-    }
+    
 }
 
 #[cfg(test)]

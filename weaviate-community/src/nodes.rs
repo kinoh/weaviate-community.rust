@@ -1,7 +1,6 @@
-use crate::collections::error::NodesError;
+use crate::collections::error::{Result, WeaviateError};
 use crate::collections::nodes::MultiNodes;
 use reqwest::Url;
-use std::error::Error;
 use std::sync::Arc;
 
 /// All nodes related endpoints and functionality described in
@@ -17,7 +16,7 @@ pub struct Nodes {
 impl Nodes {
     /// Create a new instance of the Nodes endpoint struct. Should only be done by the parent
     /// client.
-    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self, Box<dyn Error>> {
+    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self> {
         let endpoint = url.join("/v1/nodes/")?;
         Ok(Nodes { endpoint, client })
     }
@@ -35,17 +34,17 @@ impl Nodes {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn get_nodes_status(&self) -> Result<MultiNodes, Box<dyn Error>> {
+    pub async fn get_nodes_status(&self) -> Result<MultiNodes> {
         let res = self.client.get(self.endpoint.clone()).send().await?;
         match res.status() {
             reqwest::StatusCode::OK => {
                 let res: MultiNodes = res.json().await?;
                 Ok(res)
             }
-            _ => Err(Box::new(NodesError(format!(
+            _ => Err(WeaviateError::Nodes(format!(
                 "status code {} received when calling get_nodes_status endpoint.",
                 res.status()
-            )))),
+            ))),
         }
     }
 }

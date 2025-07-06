@@ -1,7 +1,6 @@
 use reqwest::Url;
-use std::error::Error;
 use std::sync::Arc;
-use crate::collections::error::ModuleError;
+use crate::collections::error::{Result, WeaviateError};
 use crate::collections::modules::{ContextionaryConcept, ContextionaryExtension};
 
 /// All contextionary module related endpoints and functionality described in
@@ -15,7 +14,7 @@ pub struct Modules {
 impl Modules {
     /// Create a new Modules object. The modules object is intended to like inside the 
     /// WeaviateClient and be called through the WeaviateClient.
-    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self, Box<dyn Error>> {
+    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self> {
         let endpoint = url.join("/v1/modules/")?;
         Ok(Modules { endpoint, client })
     }
@@ -40,7 +39,7 @@ impl Modules {
     pub async fn contextionary_get_concept(
         &self,
         concept: &str
-    ) -> Result<ContextionaryConcept, Box<dyn Error>> {
+    ) -> Result<ContextionaryConcept> {
         let mut endpoint = String::from("text2vec-contextionary/concepts/");
         endpoint.push_str(concept);
         let endpoint = self.endpoint.join(&endpoint)?;
@@ -51,7 +50,7 @@ impl Modules {
                 let res: ContextionaryConcept = res.json().await?;
                 Ok(res)
             },
-            _ => Err(self.get_err_msg("text2vec-contextionary concepts", res).await),
+            _ => Err(WeaviateError::Module(format!("text2vec-contextionary concepts failed"))),
         }
     }
 
@@ -77,7 +76,7 @@ impl Modules {
     pub async fn contextionary_extend(
         &self,
         concept: ContextionaryExtension
-    ) -> Result<ContextionaryExtension, Box<dyn Error>> {
+    ) -> Result<ContextionaryExtension> {
         let endpoint = self.endpoint.join("text2vec-contextionary/extensions")?;
         let res = self
             .client
@@ -90,37 +89,17 @@ impl Modules {
                 let res: ContextionaryExtension = res.json().await?;
                 Ok(res)
             },
-            _ => Err(self.get_err_msg("text2vec-contextionary extend", res).await),
+            status => {
+                let msg = match res.json::<serde_json::Value>().await {
+                    Ok(json) => format!("status {status}, response: {json}"),
+                    Err(_) => format!("status {status}, failed to parse response body"),
+                };
+                Err(WeaviateError::Module(msg))
+            }
         }
     }
 
-    /// Get the error message for the endpoint
-    ///
-    /// Made to reduce the boilerplate error message building
-    async fn get_err_msg(
-        &self,
-        endpoint: &str,
-        res: reqwest::Response
-    ) -> Box<ModuleError> {
-        let status_code = res.status();
-        let msg: Result<serde_json::Value, reqwest::Error> = res.json().await;
-        let r_str: String;
-        if let Ok(json) = msg {
-            r_str = format!(
-                "Status code `{}` received when calling {} endpoint. Response: {}",
-                status_code,
-                endpoint,
-                json,
-            );
-        } else {
-            r_str = format!(
-                "Status code `{}` received when calling {} endpoint.",
-                status_code,
-                endpoint
-            );
-        }
-        Box::new(ModuleError(r_str))
-    }
+    
 }
 
 #[cfg(test)]

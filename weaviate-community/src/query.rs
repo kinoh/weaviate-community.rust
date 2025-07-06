@@ -1,9 +1,8 @@
 use crate::collections::{
-    error::GraphQLError,
+    error::{Result, WeaviateError},
     query::{AggregateQuery, ExploreQuery, GetQuery, RawQuery},
 };
 use reqwest::Url;
-use std::error::Error;
 use std::sync::Arc;
 
 /// All GraphQL related endpoints and functionality described in
@@ -17,7 +16,7 @@ pub struct Query {
 impl Query {
     /// Create a new Query object. The query object is intended to like inside the WeaviateClient
     /// and be called through the WeaviateClient.
-    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self, Box<dyn Error>> {
+    pub(super) fn new(url: &Url, client: Arc<reqwest::Client>) -> Result<Self> {
         let endpoint = url.join("/v1/graphql")?;
         Ok(Query { endpoint, client })
     }
@@ -51,8 +50,8 @@ impl Query {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn get(&self, query: GetQuery) -> Result<serde_json::Value, Box<dyn Error>> {
-        let payload = serde_json::to_value(query).unwrap();
+    pub async fn get(&self, query: GetQuery) -> Result<serde_json::Value> {
+        let payload = serde_json::to_value(query)?;
         let res = self
             .client
             .post(self.endpoint.clone())
@@ -64,10 +63,10 @@ impl Query {
                 let res = res.json::<serde_json::Value>().await?;
                 Ok(res)
             }
-            _ => Err(Box::new(GraphQLError(format!(
+            _ => Err(WeaviateError::GraphQL(format!(
                 "status code {} received when executing GraphQL Get.",
                 res.status()
-            )))),
+            ))),
         }
     }
 
@@ -96,8 +95,8 @@ impl Query {
     pub async fn aggregate(
         &self,
         query: AggregateQuery,
-    ) -> Result<serde_json::Value, Box<dyn Error>> {
-        let payload = serde_json::to_value(query).unwrap();
+    ) -> Result<serde_json::Value> {
+        let payload = serde_json::to_value(query)?;
         let res = self
             .client
             .post(self.endpoint.clone())
@@ -109,10 +108,10 @@ impl Query {
                 let res = res.json::<serde_json::Value>().await?;
                 Ok(res)
             }
-            _ => Err(Box::new(GraphQLError(format!(
+            _ => Err(WeaviateError::GraphQL(format!(
                 "status code {} received when executing GraphQL Aggregate.",
                 res.status()
-            )))),
+            ))),
         }
     }
 
@@ -138,8 +137,8 @@ impl Query {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn explore(&self, query: ExploreQuery) -> Result<serde_json::Value, Box<dyn Error>> {
-        let payload = serde_json::to_value(query).unwrap();
+    pub async fn explore(&self, query: ExploreQuery) -> Result<serde_json::Value> {
+        let payload = serde_json::to_value(query)?;
         let res = self
             .client
             .post(self.endpoint.clone())
@@ -151,10 +150,10 @@ impl Query {
                 let res = res.json::<serde_json::Value>().await?;
                 Ok(res)
             }
-            _ => Err(Box::new(GraphQLError(format!(
+            _ => Err(WeaviateError::GraphQL(format!(
                 "status code {} received when executing GraphQL Explore.",
                 res.status()
-            )))),
+            ))),
         }
     }
 
@@ -183,8 +182,8 @@ impl Query {
     ///
     /// }
     /// ```
-    pub async fn raw(&self, query: RawQuery) -> Result<serde_json::Value, Box<dyn Error>> {
-        let payload = serde_json::to_value(query).unwrap();
+    pub async fn raw(&self, query: RawQuery) -> Result<serde_json::Value> {
+        let payload = serde_json::to_value(query)?;
         let res = self
             .client
             .post(self.endpoint.clone())
@@ -196,10 +195,10 @@ impl Query {
                 let res = res.json::<serde_json::Value>().await?;
                 Ok(res)
             }
-            _ => Err(Box::new(GraphQLError(format!(
+            _ => Err(WeaviateError::GraphQL(format!(
                 "status code {} received when executing GraphQL raw query.",
                 res.status()
-            )))),
+            ))),
         }
     }
 }
