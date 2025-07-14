@@ -30,3 +30,18 @@ pub enum WeaviateError {
     #[error("JSON parse error")]
     JsonParse(#[from] serde_json::Error),
 }
+
+impl WeaviateError {
+    pub async fn from_response(
+        variant: impl Fn(String) -> WeaviateError,
+        context: &str,
+        res: reqwest::Response,
+    ) -> WeaviateError {
+        let status = res.status();
+        let msg = match res.json::<serde_json::Value>().await {
+            Ok(json) => format!("{context}: status {status}, response: {json}"),
+            Err(_) => format!("{context}: status {status}, failed to parse response body"),
+        };
+        variant(msg)
+    }
+}

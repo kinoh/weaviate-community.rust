@@ -50,7 +50,11 @@ impl Modules {
                 let res: ContextionaryConcept = res.json().await?;
                 Ok(res)
             },
-            _ => Err(WeaviateError::Module(format!("text2vec-contextionary concepts failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Module,
+                "text2vec-contextionary concepts",
+                res,
+            ).await),
         }
     }
 
