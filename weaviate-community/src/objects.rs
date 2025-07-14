@@ -106,7 +106,11 @@ impl Objects {
                 let res: MultiObjects = res.json().await?;
                 Ok(res)
             }
-            _ => Err(WeaviateError::Query(format!("list objects failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Query,
+                "list objects",
+                res,
+            ).await),
         }
     }
 
@@ -157,7 +161,11 @@ impl Objects {
                 let res: Object = res.json().await?;
                 Ok(res)
             }
-            _ => Err(WeaviateError::Query(format!("create object failed")))
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Query,
+                "create object",
+                res,
+            ).await)
         }
     }
 
@@ -217,7 +225,11 @@ impl Objects {
                 let res: Object = res.json().await?;
                 Ok(res)
             }
-            _ => Err(WeaviateError::Query(format!("get object failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Query,
+                "get object",
+                res,
+            ).await),
         }
     }
 
@@ -270,7 +282,11 @@ impl Objects {
         let res = self.client.head(endpoint).send().await?;
         match res.status() {
             reqwest::StatusCode::NO_CONTENT => Ok(true),
-            _ => Err(WeaviateError::Query(format!("object exists failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Query,
+                "object exists",
+                res,
+            ).await),
         }
     }
 
@@ -324,7 +340,11 @@ impl Objects {
         let res = self.client.patch(endpoint).json(&properties).send().await?;
         match res.status() {
             reqwest::StatusCode::NO_CONTENT => Ok(true),
-            _ => Err(WeaviateError::Query(format!("update object properties failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Query,
+                "update object properties",
+                res,
+            ).await),
         }
     }
 
@@ -389,7 +409,11 @@ impl Objects {
                 let res: Object = res.json().await?;
                 Ok(res)
             }
-            _ => Err(WeaviateError::Query(format!("replace object properties failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Query,
+                "replace object properties",
+                res,
+            ).await),
         }
     }
 
@@ -441,7 +465,11 @@ impl Objects {
         let res = self.client.delete(endpoint).send().await?;
         match res.status() {
             reqwest::StatusCode::NO_CONTENT => Ok(true),
-            _ => Err(WeaviateError::Query(format!("delete object failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Query,
+                "delete object",
+                res,
+            ).await),
         }
     }
 
@@ -484,7 +512,11 @@ impl Objects {
         let res = self.client.post(endpoint).json(&payload).send().await?;
         match res.status() {
             reqwest::StatusCode::OK => Ok(true),
-            _ => Err(WeaviateError::Query(format!("validate object failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Query,
+                "validate object",
+                res,
+            ).await),
         }
     }
 
@@ -550,7 +582,11 @@ impl Objects {
         let res = self.client.post(endpoint).json(&payload).send().await?;
         match res.status() {
             reqwest::StatusCode::OK => Ok(true),
-            _ => Err(WeaviateError::Query(format!("add object reference failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Query,
+                "add object reference",
+                res,
+            ).await),
         }
     }
 
@@ -639,7 +675,11 @@ impl Objects {
                 let res: Object = res.json().await?;
                 Ok(res)
             }
-            _ => Err(WeaviateError::Query(format!("update object reference failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Query,
+                "update object reference",
+                res,
+            ).await),
         }
     }
     
@@ -705,7 +745,11 @@ impl Objects {
         let res = self.client.delete(endpoint).json(&payload).send().await?;
         match res.status() {
             reqwest::StatusCode::NO_CONTENT => Ok(true),
-            _ => Err(WeaviateError::Query(format!("delete object reference failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Query,
+                "delete object reference",
+                res,
+            ).await),
         }
     }
 

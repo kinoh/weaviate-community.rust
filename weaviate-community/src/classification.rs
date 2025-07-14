@@ -73,7 +73,11 @@ impl Classification {
                 let res: ClassificationResponse = res.json().await?;
                 Ok(res)
             }
-            _ => Err(WeaviateError::Classification(format!("schedule classification failed")))
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Classification,
+                "schedule classification",
+                res,
+            ).await)
         }
     }
 

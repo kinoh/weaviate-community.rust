@@ -44,7 +44,11 @@ impl Schema {
                 let res: Class = res.json().await?;
                 Ok(res)
             },
-            _ => Err(WeaviateError::Schema(format!("get class failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Schema,
+                "get class",
+                res,
+            ).await),
         }
     }
 
@@ -69,7 +73,11 @@ impl Schema {
                 let res: Classes = res.json().await?;
                 Ok(res)
             }
-            _ => Err(WeaviateError::Schema(format!("get schema failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Schema,
+                "get schema",
+                res,
+            ).await),
         }
     }
 
@@ -106,7 +114,11 @@ impl Schema {
                 let res: Class = res.json().await?;
                 Ok(res)
             }
-            _ => Err(WeaviateError::Schema(format!("create class failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Schema,
+                "create class",
+                res,
+            ).await),
         }
     }
 
@@ -131,7 +143,11 @@ impl Schema {
         let res = self.client.delete(endpoint).send().await?;
         match res.status() {
             reqwest::StatusCode::OK => Ok(true),
-            _ => Err(WeaviateError::Schema(format!("delete class failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Schema,
+                "delete class",
+                res,
+            ).await),
         }
     }
 
@@ -157,7 +173,11 @@ impl Schema {
                 let res: Class = res.json().await?;
                 Ok(res)
             }
-            _ => Err(WeaviateError::Schema(format!("update class failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Schema,
+                "update class",
+                res,
+            ).await),
         }
     }
 
@@ -179,7 +199,11 @@ impl Schema {
                 let res: Property = res.json().await?;
                 Ok(res)
             }
-            _ => Err(WeaviateError::Schema(format!("add property failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Schema,
+                "add property",
+                res,
+            ).await),
         }
     }
 
@@ -197,7 +221,11 @@ impl Schema {
                 let shards = Shards { shards };
                 Ok(shards)
             }
-            _ => Err(WeaviateError::Schema(format!("get shards failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Schema,
+                "get shards",
+                res,
+            ).await),
         }
     }
 
@@ -221,7 +249,11 @@ impl Schema {
                 name: shard_name.into(),
                 status,
             }),
-            _ => Err(WeaviateError::Schema(format!("update class shard failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Schema,
+                "update class shard",
+                res,
+            ).await),
         }
     }
 
@@ -239,7 +271,11 @@ impl Schema {
                 let tenants = Tenants { tenants };
                 Ok(tenants)
             }
-            _ => Err(WeaviateError::Schema(format!("list tenants failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Schema,
+                "list tenants",
+                res,
+            ).await),
         }
     }
 
@@ -262,7 +298,11 @@ impl Schema {
                 let tenants = Tenants { tenants };
                 Ok(tenants)
             }
-            _ => Err(WeaviateError::Schema(format!("add tenants failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Schema,
+                "add tenants",
+                res,
+            ).await),
         }
     }
 
@@ -281,7 +321,11 @@ impl Schema {
         let res = self.client.delete(endpoint).json(&payload).send().await?;
         match res.status() {
             reqwest::StatusCode::OK => Ok(true),
-            _ => Err(WeaviateError::Schema(format!("remove tenants failed"))),
+            _ => Err(WeaviateError::from_response(
+                WeaviateError::Schema,
+                "remove tenants",
+                res,
+            ).await),
         }
     }
 
