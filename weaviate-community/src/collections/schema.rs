@@ -419,6 +419,9 @@ pub struct Property {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
+    pub nested_properties: Option<Vec<Property>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub tokenization: Option<Tokenization>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
@@ -462,6 +465,7 @@ pub struct PropertyBuilder {
     pub name: String,
     pub data_type: Vec<String>,
     pub description: Option<String>,
+    pub nested_properties: Option<Vec<Property>>,
     pub tokenization: Option<Tokenization>,
     pub module_config: Option<serde_json::Value>,
     pub index_filterable: Option<bool>,
@@ -492,6 +496,7 @@ impl PropertyBuilder {
             name: name.into(),
             data_type,
             description: None,
+            nested_properties: None,
             tokenization: None,
             module_config: None,
             index_filterable: None,
@@ -514,6 +519,24 @@ impl PropertyBuilder {
     /// ```
     pub fn with_description(mut self, description: &str) -> PropertyBuilder {
         self.description = Some(description.into());
+        self
+    }
+
+    /// Add a value to the optional `nested_properties` value of the property.
+    ///
+    /// # Parameters
+    /// - nested_properties: the nested properties to use for the property
+    ///
+    /// # Example
+    /// ```rust
+    /// use weaviate_community::collections::schema::{PropertyBuilder, Property};
+    ///
+    /// let nested_props = vec![Property::builder("title", vec!["text"]).build()];
+    /// let builder = PropertyBuilder::new("metadata", vec!["object"])
+    ///     .with_nested_properties(nested_props);
+    /// ```
+    pub fn with_nested_properties(mut self, nested_properties: Vec<Property>) -> PropertyBuilder {
+        self.nested_properties = Some(nested_properties);
         self
     }
 
@@ -632,6 +655,7 @@ impl PropertyBuilder {
             name: self.name,
             data_type: self.data_type,
             description: self.description,
+            nested_properties: self.nested_properties,
             tokenization: self.tokenization,
             module_config: self.module_config,
             index_filterable: self.index_filterable,
